@@ -8,12 +8,14 @@ export async function syncFiles(options: SyncFilesOptions): Promise<void> {
 	console.log(`Starting sync for ${sourceFilename} to ${destRepo}/${destPath}/${destFilename}`);
 	
 	try {
-		console.log(`Fetching content from ${process.env.GITHUB_REPOSITORY_OWNER}/${process.env.GITHUB_REPOSITORY?.split("/")[1]}/${sourcePath}/${sourceFilename}`);
+		console.log(`Fetching content from ${process.env.GITHUB_REPOSITORY_OWNER}/${process.env.GITHUB_REPOSITORY?.split("/")[1]}/${sourcePath === '.' ? '' : sourcePath + '/'}${sourceFilename}`);
+		
+		const filePath = sourcePath === '.' ? sourceFilename : `${sourcePath}/${sourceFilename}`;
 		
 		const { data: fileContent } = await octokit.repos.getContent({
 			owner: process.env.GITHUB_REPOSITORY_OWNER!,
 			repo: process.env.GITHUB_REPOSITORY!.split("/")[1],
-			path: `${sourcePath}/${sourceFilename}`
+			path: filePath
 		});
 
 		if ("content" in fileContent) {
@@ -38,6 +40,7 @@ async function createPullRequest(
 ): Promise<void> {
 	const [owner, repo] = destRepo.split("/");
 	const branchName = `sync-${sourceFilename}-${destFilename}`;
+	const destFilePath = destPath === '.' ? destFilename : `${destPath}/${destFilename}`;
 
 	console.log(`Creating PR in ${destRepo} with branch ${branchName}`);
 
@@ -61,11 +64,11 @@ async function createPullRequest(
 
 		// Check if file exists and update or create accordingly
 		try {
-			console.log(`Checking if file ${destPath}/${destFilename} exists in branch ${branchName}`);
+			console.log(`Checking if file ${destFilePath} exists in branch ${branchName}`);
 			const { data: existingFile } = await octokit.repos.getContent({
 				owner,
 				repo,
-				path: `${destPath}/${destFilename}`,
+				path: destFilePath,
 				ref: branchName
 			});
 
@@ -74,7 +77,7 @@ async function createPullRequest(
 				await octokit.repos.createOrUpdateFileContents({
 					owner,
 					repo,
-					path: `${destPath}/${destFilename}`,
+					path: destFilePath,
 					message: `Sync ${sourceFilename} from source repository`,
 					content: Buffer.from(fileContent).toString("base64"),
 					sha: existingFile.sha,
@@ -83,11 +86,11 @@ async function createPullRequest(
 			}
 		} catch (error) {
 			// File doesn't exist, create it
-			console.log(`File doesn't exist, creating new file at ${destPath}/${destFilename}`);
+			console.log(`File doesn't exist, creating new file at ${destFilePath}`);
 			await octokit.repos.createOrUpdateFileContents({
 				owner,
 				repo,
-				path: `${destPath}/${destFilename}`,
+				path: destFilePath,
 				message: `Add ${sourceFilename} from source repository`,
 				content: Buffer.from(fileContent).toString("base64"),
 				branch: branchName
