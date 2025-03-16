@@ -4,10 +4,7 @@ import { syncFiles } from "./syncFiles";
 import { FileMappingsSchema } from "./types";
 
 export async function run(): Promise<void> {
-	const githubToken = process.env.GITHUB_TOKEN;
-	if (!githubToken) {
-		throw new Error("GITHUB_TOKEN is not set");
-	}
+	const githubToken = core.getInput("github-token", { required: true });
 
 	const filesMapInput = JSON.parse(core.getInput("file-mappings"));
 	const fileMaps = FileMappingsSchema.parse(filesMapInput);
