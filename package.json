@@ -1,32 +1,36 @@
 {
-  "name": "happi-file-sync-gh",
-  "version": "0.0.0",
-  "description": "",
-  "main": "dist/index.js",
-  "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/simonloynes/happi-file-sync-gh.git"
-  },
-  "scripts": {
-    "build": "ncc build ./src/index.ts",
-    "test": "vitest"
-  },
-  "keywords": [],
-  "author": "Simon Loynes",
-  "dependencies": {
-    "@actions/core": "^1.11.1"
-  },
-  "devDependencies": {
-    "@types/node": "^22.10.1",
-    "@vercel/ncc": "^0.38.3",
-    "prettier": "^3.4.2",
-    "semantic-release": "^24.2.3",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
-  },
-  "files": [
-    "dist"
-  ],
-  "packageManager": "pnpm@9.15.1"
+	"name": "happi-file-sync-gh",
+	"version": "0.0.0",
+	"description": "",
+	"main": "dist/index.js",
+	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/simonloynes/happi-file-sync-gh.git"
+	},
+	"scripts": {
+		"build": "ncc build ./src/index.ts",
+		"test": "vitest",
+		"format": "prettier --write .",
+		"format:check": "prettier --check ."
+	},
+	"keywords": [],
+	"author": "Simon Loynes",
+	"dependencies": {
+		"@actions/core": "^1.11.1",
+		"@octokit/rest": "^21.1.1",
+		"zod": "^3.24.2"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.1",
+		"@vercel/ncc": "^0.38.3",
+		"prettier": "^3.4.2",
+		"semantic-release": "^24.2.3",
+		"typescript": "^5.7.2",
+		"vitest": "^2.1.8"
+	},
+	"files": [
+		"dist"
+	],
+	"packageManager": "pnpm@9.15.1"
 }
