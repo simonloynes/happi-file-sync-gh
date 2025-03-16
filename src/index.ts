@@ -20,3 +20,11 @@ export async function run(): Promise<void> {
 
 export * from "./types";
 export { syncFiles } from "./syncFiles";
+
+// Execute the run function when the action is run
+if (require.main === module) {
+	run().catch(error => {
+		console.error("Action failed with error:", error);
+		core.setFailed(error.message);
+	});
+}
