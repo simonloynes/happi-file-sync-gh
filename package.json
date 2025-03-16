@@ -1,0 +1,43 @@
+{
+  "name": "happi-file-sync-gh",
+  "version": "0.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/simonloynes/happi-file-sync-gh.git"
+  },
+  "scripts": {
+    "build": "ncc build ./src/index.ts",
+    "test": "vitest",
+    "release": "semantic-release"
+  },
+  "keywords": [],
+  "author": "Simon Loynes",
+  "dependencies": {
+    "@actions/core": "^1.11.1"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.1",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.1",
+    "@types/node": "^22.10.1",
+    "@vercel/ncc": "^0.38.3",
+    "prettier": "^3.4.2",
+    "semantic-release": "^24.2.3",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ],
+  "packageManager": "pnpm@9.15.1"
+}

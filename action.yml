@@ -1,0 +1,13 @@
+name: "Happi File Sync"
+description: "Sync changes in specified files between GitHub repositories."
+inputs:
+  watched-files:
+    description: "The files to watch for changes."
+    required: true
+  target-repo:
+    description: "The target repository to sync the changes to."
+    required: true
+    
+runs:
+  using: "node20"
+  main: "dist/index.js"
