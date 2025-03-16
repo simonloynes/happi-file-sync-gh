@@ -24,20 +24,23 @@ describe('run', () => {
     // Reset all mocks before each test
     vi.resetAllMocks();
     
-    // Setup environment variable
-    process.env.GITHUB_TOKEN = mockGithubToken;
-
-    // Mock core.getInput to return our test file mappings
-    vi.mocked(core.getInput).mockReturnValue(JSON.stringify({
-      'test-mapping': mockFileMapping
-    }));
+    // Mock core.getInput values
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'github-token') return mockGithubToken;
+      if (name === 'file-mappings') return JSON.stringify({ 'test-mapping': mockFileMapping });
+      throw new Error(`Unexpected input: ${name}`);
+    });
   });
 
-  it('should throw error if GITHUB_TOKEN is not set', async () => {
-    // Remove the token for this test
-    delete process.env.GITHUB_TOKEN;
+  it('should throw error if github-token is not provided', async () => {
+    // Mock getInput to throw for required input
+    vi.mocked(core.getInput).mockImplementation((name, options) => {
+      if (name === 'github-token') throw new Error('Input required and not supplied: github-token');
+      if (name === 'file-mappings') return JSON.stringify({ 'test-mapping': mockFileMapping });
+      throw new Error(`Unexpected input: ${name}`);
+    });
 
-    await expect(run()).rejects.toThrow('GITHUB_TOKEN is not set');
+    await expect(run()).rejects.toThrow('Input required and not supplied: github-token');
   });
 
   it('should initialize Octokit with the correct token', async () => {
@@ -59,8 +62,11 @@ describe('run', () => {
   });
 
   it('should handle invalid file mappings input', async () => {
-    // Mock core.getInput to return invalid JSON
-    vi.mocked(core.getInput).mockReturnValue('invalid-json');
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'github-token') return mockGithubToken;
+      if (name === 'file-mappings') return 'invalid-json';
+      throw new Error(`Unexpected input: ${name}`);
+    });
 
     await expect(run()).rejects.toThrow();
   });
