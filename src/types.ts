@@ -6,7 +6,8 @@ export const FileMappingSchema = z.object({
 	sourceFilename: z.string(),
 	destRepo: z.string(),
 	destPath: z.string(),
-	destFilename: z.string()
+	destFilename: z.string(),
+	destBranch: z.string().optional()
 });
 
 export const FileMappingsSchema = z.record(z.string(), FileMappingSchema);
@@ -22,6 +23,7 @@ export interface FileMapping {
 	destRepo: string;
 	destPath: string;
 	destFilename: string;
+	destBranch?: string;
 }
 
 export interface FileMappings {
