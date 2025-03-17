@@ -11,14 +11,15 @@ describe('syncFiles', () => {
   const mockBase64Content = Buffer.from(mockFileContent).toString('base64');
   let mockOctokit: any;
 
-  const mockOptions = (): SyncFilesOptions => ({
+  const mockOptions = (sourcePath = 'source/path', destBranch?: string): SyncFilesOptions => ({
     octokit: mockOctokit as unknown as Octokit,
     fileMap: {
-      sourcePath: 'source/path',
+      sourcePath,
       sourceFilename: 'source.txt',
       destRepo: 'dest-owner/dest-repo',
       destPath: 'dest/path',
-      destFilename: 'dest.txt'
+      destFilename: 'dest.txt',
+      ...(destBranch ? { destBranch } : {})
     }
   });
 
@@ -77,12 +78,17 @@ describe('syncFiles', () => {
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
     mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
-    mockOctokit.pulls.create.mockResolvedValueOnce({});
+    mockOctokit.pulls.create.mockResolvedValueOnce({
+      data: {
+        number: 123,
+        html_url: 'https://github.com/dest-owner/dest-repo/pull/123'
+      }
+    });
 
     const options = mockOptions();
     await syncFiles(options);
 
-    // Verify source file was fetched
+    // Verify source file was fetched with correct path
     expect(mockOctokit.repos.getContent).toHaveBeenCalledWith({
       owner: mockOwner,
       repo: mockRepo,
@@ -97,25 +103,132 @@ describe('syncFiles', () => {
       sha: mockSha
     });
 
-    // Verify file was updated
+    // Verify file was updated with correct path
+    const destFilePath = `${options.fileMap.destPath}/${options.fileMap.destFilename}`;
     expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalledWith({
       owner: 'dest-owner',
       repo: 'dest-repo',
-      path: `${options.fileMap.destPath}/${options.fileMap.destFilename}`,
+      path: destFilePath,
       message: `Sync ${options.fileMap.sourceFilename} from source repository`,
       content: mockBase64Content,
       sha: mockSha,
       branch: `sync-${options.fileMap.sourceFilename}-${options.fileMap.destFilename}`
     });
 
-    // Verify PR was created
+    // Verify PR was created with updated title and body
     expect(mockOctokit.pulls.create).toHaveBeenCalledWith({
       owner: 'dest-owner',
       repo: 'dest-repo',
-      title: `Sync ${options.fileMap.sourceFilename} from source repository`,
+      title: `Sync ${options.fileMap.sourceFilename} from ${mockOwner}/${mockRepo}`,
       head: `sync-${options.fileMap.sourceFilename}-${options.fileMap.destFilename}`,
       base: 'main',
-      body: 'This PR was automatically created by the file sync action.'
+      body: "This PR was automatically created by the `[happi-file-sync-gh](https://github.com/simonloynes/happi-file-sync-gh)` action."
+    });
+  });
+
+  it('should handle files in the root directory correctly', async () => {
+    // Mock getContent for source file in root directory
+    mockOctokit.repos.getContent
+      .mockResolvedValueOnce({
+        data: {
+          content: mockBase64Content,
+          sha: mockSha
+        }
+      })
+      // Mock getContent for destination file to throw
+      .mockRejectedValueOnce(new Error('Not found'));
+
+    // Mock getRef
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock other API calls
+    mockOctokit.git.createRef.mockResolvedValueOnce({});
+    mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
+    mockOctokit.pulls.create.mockResolvedValueOnce({
+      data: {
+        number: 123,
+        html_url: 'https://github.com/dest-owner/dest-repo/pull/123'
+      }
+    });
+
+    const options = mockOptions('.');
+    await syncFiles(options);
+
+    // Verify source file was fetched with correct path (just filename for root)
+    expect(mockOctokit.repos.getContent).toHaveBeenCalledWith({
+      owner: mockOwner,
+      repo: mockRepo,
+      path: options.fileMap.sourceFilename
+    });
+
+    // Verify file was created with correct path
+    const destFilePath = `${options.fileMap.destPath}/${options.fileMap.destFilename}`;
+    expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      path: destFilePath,
+      message: `Add ${options.fileMap.sourceFilename} from source repository`,
+      content: mockBase64Content,
+      branch: `sync-${options.fileMap.sourceFilename}-${options.fileMap.destFilename}`
+    });
+  });
+
+  it('should handle destination files in the root directory correctly', async () => {
+    // Mock getContent for source file
+    mockOctokit.repos.getContent
+      .mockResolvedValueOnce({
+        data: {
+          content: mockBase64Content,
+          sha: mockSha
+        }
+      })
+      // Mock getContent for destination file to throw
+      .mockRejectedValueOnce(new Error('Not found'));
+
+    // Mock getRef
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock other API calls
+    mockOctokit.git.createRef.mockResolvedValueOnce({});
+    mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
+    mockOctokit.pulls.create.mockResolvedValueOnce({
+      data: {
+        number: 123,
+        html_url: 'https://github.com/dest-owner/dest-repo/pull/123'
+      }
+    });
+
+    // Create options with root destination path
+    const options = {
+      ...mockOptions(),
+      fileMap: {
+        ...mockOptions().fileMap,
+        destPath: '.'
+      }
+    };
+    
+    await syncFiles(options);
+
+    // Verify file was created with correct path (just filename for root)
+    expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      path: options.fileMap.destFilename,
+      message: `Add ${options.fileMap.sourceFilename} from source repository`,
+      content: mockBase64Content,
+      branch: `sync-${options.fileMap.sourceFilename}-${options.fileMap.destFilename}`
     });
   });
 
@@ -143,16 +256,22 @@ describe('syncFiles', () => {
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
     mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
-    mockOctokit.pulls.create.mockResolvedValueOnce({});
+    mockOctokit.pulls.create.mockResolvedValueOnce({
+      data: {
+        number: 123,
+        html_url: 'https://github.com/dest-owner/dest-repo/pull/123'
+      }
+    });
 
     const options = mockOptions();
     await syncFiles(options);
 
     // Verify file was created without sha
+    const destFilePath = `${options.fileMap.destPath}/${options.fileMap.destFilename}`;
     expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalledWith({
       owner: 'dest-owner',
       repo: 'dest-repo',
-      path: `${options.fileMap.destPath}/${options.fileMap.destFilename}`,
+      path: destFilePath,
       message: `Add ${options.fileMap.sourceFilename} from source repository`,
       content: mockBase64Content,
       branch: `sync-${options.fileMap.sourceFilename}-${options.fileMap.destFilename}`
@@ -195,6 +314,65 @@ describe('syncFiles', () => {
     );
   });
 
+  it('should fallback to master branch when main branch is not found', async () => {
+    // Mock getContent for source file
+    mockOctokit.repos.getContent.mockResolvedValueOnce({
+      data: {
+        content: mockBase64Content,
+        sha: mockSha
+      }
+    });
+
+    // Mock getRef to throw 404 for main branch but succeed for master branch
+    const notFoundError = new Error('Not Found');
+    (notFoundError as any).status = 404;
+    mockOctokit.git.getRef
+      .mockRejectedValueOnce(notFoundError)
+      .mockResolvedValueOnce({
+        data: {
+          object: {
+            sha: mockSha
+          }
+        }
+      });
+
+    // Mock other API calls
+    mockOctokit.git.createRef.mockResolvedValueOnce({});
+    mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
+    mockOctokit.pulls.create.mockResolvedValueOnce({
+      data: {
+        number: 123,
+        html_url: 'https://github.com/dest-owner/dest-repo/pull/123'
+      }
+    });
+
+    const options = mockOptions();
+    await syncFiles(options);
+
+    // Verify both main and master refs were attempted
+    expect(mockOctokit.git.getRef).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      ref: 'heads/main'
+    });
+    
+    expect(mockOctokit.git.getRef).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      ref: 'heads/master'
+    });
+
+    // Verify PR was created successfully using master branch
+    expect(mockOctokit.pulls.create).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      title: `Sync ${options.fileMap.sourceFilename} from ${mockOwner}/${mockRepo}`,
+      head: `sync-${options.fileMap.sourceFilename}-${options.fileMap.destFilename}`,
+      base: 'master',
+      body: "This PR was automatically created by the `[happi-file-sync-gh](https://github.com/simonloynes/happi-file-sync-gh)` action."
+    });
+  });
+
   it('should handle missing environment variables', async () => {
     delete process.env.GITHUB_REPOSITORY_OWNER;
     delete process.env.GITHUB_REPOSITORY;
@@ -204,5 +382,62 @@ describe('syncFiles', () => {
 
     // Verify error was logged
     expect(console.error).toHaveBeenCalled();
+  });
+
+  it('should use the specified destination branch when provided', async () => {
+    // Mock getContent for source file
+    mockOctokit.repos.getContent
+      .mockResolvedValueOnce({
+        data: {
+          content: mockBase64Content,
+          sha: mockSha
+        }
+      })
+      // Mock getContent for destination file
+      .mockResolvedValueOnce({
+        data: {
+          sha: mockSha
+        }
+      });
+
+    // Mock getRef
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock other API calls
+    mockOctokit.git.createRef.mockResolvedValueOnce({});
+    mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
+    mockOctokit.pulls.create.mockResolvedValueOnce({
+      data: {
+        number: 123,
+        html_url: 'https://github.com/dest-owner/dest-repo/pull/123'
+      }
+    });
+
+    const customBranch = 'develop';
+    const options = mockOptions('source/path', customBranch);
+    await syncFiles(options);
+
+    // Verify the correct branch was used
+    expect(mockOctokit.git.getRef).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      ref: `heads/${customBranch}`
+    });
+    
+    // Verify PR was created with the custom branch
+    expect(mockOctokit.pulls.create).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      title: `Sync ${options.fileMap.sourceFilename} from ${mockOwner}/${mockRepo}`,
+      head: `sync-${options.fileMap.sourceFilename}-${options.fileMap.destFilename}`,
+      base: customBranch,
+      body: "This PR was automatically created by the `[happi-file-sync-gh](https://github.com/simonloynes/happi-file-sync-gh)` action."
+    });
   });
 }); 

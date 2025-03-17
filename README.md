@@ -4,7 +4,7 @@ Automatically sync specified files between github repositories.
 
 ## Features
 
-- Automatically raise Pull Requests in a target repository when changes are made to monitored files.
+- Automatically sync a file to a target repository when changes are made to monitored files.
 
 ## Usage
 
@@ -17,9 +17,12 @@ This is a GitHub Action that automatically syncs files between repositories by c
 ```yaml
 name: Sync Files
 on:
-  push:
+  pull_request_target:
+    types: [closed]
     branches:
-      - main  # or any branch you want to monitor
+      - main # Only in the main branch
+    paths:
+      - "README.md" # Target changes on the README in the repository root
   workflow_dispatch:  # Allows manual triggering of the workflow
 
 jobs:
@@ -29,7 +32,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: happi-file-sync-gh@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}  # Token is passed as an input parameter
+          github-token: ${{ secrets.SYNC_PAT }}  # Token is passed as an input parameter
           file-mappings: |
             {
               "config": {
@@ -37,7 +40,8 @@ jobs:
                 "sourceFilename": "settings.json",
                 "destRepo": "other-org/other-repo",
                 "destPath": "config",
-                "destFilename": "settings.json"
+                "destFilename": "settings.json",
+                "destBranch": "main"
               },
               "docs": {
                 "sourcePath": "docs",
@@ -45,6 +49,7 @@ jobs:
                 "destRepo": "other-org/other-repo",
                 "destPath": "documentation",
                 "destFilename": "README.md"
+                "destBranch": "main",
               }
             }
 
@@ -59,6 +64,7 @@ The `file-mappings` input is a JSON object where each key is a unique identifier
 - `destRepo`: Target repository in format `owner/repo`
 - `destPath`: Directory path in the destination repository (use `"."` for files in the root directory)
 - `destFilename`: Name of the file in the destination repository
+- `destBranch`: (Optional) Target branch in the destination repository (defaults to `main` with fallback to `master`)
 
 Example with a file in the root directory:
 ```json
@@ -73,6 +79,20 @@ Example with a file in the root directory:
 }
 ```
 
+Example with a custom destination branch:
+```json
+{
+  "develop-branch": {
+    "sourcePath": "config",
+    "sourceFilename": "settings.json",
+    "destRepo": "other-org/other-repo",
+    "destPath": "config",
+    "destFilename": "settings.json",
+    "destBranch": "develop"
+  }
+}
+```
+
 ### How it Works
 
 1. When changes are pushed to the monitored branch, the action will:
@@ -83,8 +103,8 @@ Example with a file in the root directory:
 
 2. Pull requests will be created with:
    - Branch name: `sync-{sourceFilename}-{destFilename}`
-   - Title: `Sync {sourceFilename} from source repository`
-   - Description: Automatic sync notification
+   - Title: `Sync {sourceFilename} from other-org/other-repo`
+   - Description: This PR was automatically created by the `[happi-file-sync-gh](https://github.com/simonloynes/happi-file-sync-gh)` action.
 
 ### Permissions
 
