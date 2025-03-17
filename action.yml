@@ -14,6 +14,7 @@ inputs:
           "destRepo": "owner/repo",
           "destPath": "string",
           "destFilename": "string"
+          "destBranch": "string"
         }
       }
     required: true
