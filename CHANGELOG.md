@@ -5,10 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.0] - 2024-12-19
+## [Unreleased]
+
+### Added
+- **Branch handling strategies**: Added support for handling situations where a branch already exists on the destination repository
+  - New `existingBranchStrategy` configuration option with three strategies:
+    - `update` (default): Updates the existing branch and its associated pull request
+    - `create-new`: Creates a new branch with timestamp suffix (e.g., `sync-config-2024-01-15T10-30-45`)
+    - `fail`: Fails the action if the branch already exists
+  - Automatic detection of existing pull requests to avoid creating duplicates
+  - Enhanced logging for branch and PR status
 
 ### Changed
-- Improved logging using Octokit's core logging utilities
+- **Default behavior**: The action now defaults to updating existing branches instead of failing
+- **Branch naming**: When using `create-new` strategy, branches are created with ISO timestamp suffix for uniqueness
+- **Error handling**: Improved error messages and handling for branch existence scenarios
+
+### Technical
+- Updated TypeScript types to include the new `existingBranchStrategy` option
+- Enhanced test coverage with new tests for all branch handling strategies
+- Improved GitHub API calls to check for existing branches and pull requests
+
+## [1.3.0] - 2024-01-15
+
+### Added
+- Initial release of happi-file-sync-gh action
+- Support for syncing files between GitHub repositories
+- Automatic pull request creation
+- Configurable file mappings with source and destination paths
+- Support for custom destination branches
+- Debug logging capabilities
 
 ## [1.2.0] -  2024-03-17
 
