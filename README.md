@@ -33,6 +33,7 @@ jobs:
       - uses: happi-file-sync-gh@v1
         with:
           github-token: ${{ secrets.SYNC_PAT }}  # Token is passed as an input parameter
+          debug: false  # Enable debug logging for Octokit API calls (optional)
           file-mappings: |
             {
               "config": {
@@ -56,6 +57,14 @@ jobs:
 ```
 
 ### Configuration
+
+#### Input Parameters
+
+- `github-token`: GitHub token with access to both source and destination repositories (required)
+- `file-mappings`: JSON object mapping filenames to their source and destination details (required)
+- `debug`: Enable debug logging for Octokit API calls (optional, defaults to `false`)
+
+#### File Mappings
 
 The `file-mappings` input is a JSON object where each key is a unique identifier for the mapping, and the value contains:
 
@@ -118,11 +127,12 @@ The action requires:
   
 Note: The default `GITHUB_TOKEN` provided by GitHub Actions only has access to the current repository. If you need to sync files to a different repository, you'll need to create a Personal Access Token (PAT) with access to both repositories and store it as a repository secret.
 
-Example workflow using a PAT:
+Example workflow using a PAT with debug logging:
 ```yaml
 - uses: happi-file-sync-gh@v1
   with:
     github-token: ${{ secrets.SYNC_PAT }}  # Use a PAT with access to both repos
+    debug: true  # Enable detailed logging for troubleshooting
     file-mappings: |
       {
         "config": {

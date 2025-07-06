@@ -28,6 +28,7 @@ describe('run', () => {
     vi.mocked(core.getInput).mockImplementation((name) => {
       if (name === 'github-token') return mockGithubToken;
       if (name === 'file-mappings') return JSON.stringify({ 'test-mapping': mockFileMapping });
+      if (name === 'debug') return 'false';
       throw new Error(`Unexpected input: ${name}`);
     });
   });
@@ -37,16 +38,38 @@ describe('run', () => {
     vi.mocked(core.getInput).mockImplementation((name, options) => {
       if (name === 'github-token') throw new Error('Input required and not supplied: github-token');
       if (name === 'file-mappings') return JSON.stringify({ 'test-mapping': mockFileMapping });
+      if (name === 'debug') return 'false';
       throw new Error(`Unexpected input: ${name}`);
     });
 
     await expect(run()).rejects.toThrow('Input required and not supplied: github-token');
   });
 
-  it('should initialize Octokit with the correct token', async () => {
+  it('should initialize Octokit with the correct token and logging', async () => {
     await run();
 
-    expect(Octokit).toHaveBeenCalledWith({ auth: mockGithubToken });
+    expect(Octokit).toHaveBeenCalledWith({ 
+      auth: mockGithubToken,
+      log: expect.any(Object),
+      debug: false
+    });
+  });
+
+  it('should initialize Octokit with debug enabled when debug input is true', async () => {
+    vi.mocked(core.getInput).mockImplementation((name) => {
+      if (name === 'github-token') return mockGithubToken;
+      if (name === 'file-mappings') return JSON.stringify({ 'test-mapping': mockFileMapping });
+      if (name === 'debug') return 'true';
+      throw new Error(`Unexpected input: ${name}`);
+    });
+
+    await run();
+
+    expect(Octokit).toHaveBeenCalledWith({ 
+      auth: mockGithubToken,
+      log: expect.any(Object),
+      debug: true
+    });
   });
 
   it('should call syncFiles with correct parameters', async () => {

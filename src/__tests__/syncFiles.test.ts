@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Octokit } from '@octokit/rest';
+import * as core from '@actions/core';
 import { syncFiles } from '../syncFiles';
 import { SyncFilesOptions } from '../types';
+
+// Mock @actions/core
+vi.mock('@actions/core', () => ({
+  info: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+  warning: vi.fn()
+}));
 
 describe('syncFiles', () => {
   const mockOwner = 'test-owner';
@@ -44,10 +53,6 @@ describe('syncFiles', () => {
         create: vi.fn()
       }
     };
-
-    // Mock console methods
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   it('should successfully sync files and create a PR when file exists', async () => {
@@ -286,9 +291,8 @@ describe('syncFiles', () => {
     await syncFiles(options);
 
     // Verify error was logged
-    expect(console.error).toHaveBeenCalledWith(
-      `Error processing ${options.fileMap.sourceFilename}:`,
-      expect.any(Error)
+    expect(core.error).toHaveBeenCalledWith(
+      `Error processing ${options.fileMap.sourceFilename}: Not found`
     );
   });
 
@@ -308,9 +312,8 @@ describe('syncFiles', () => {
     await syncFiles(options);
 
     // Verify error was logged
-    expect(console.error).toHaveBeenCalledWith(
-      `Error creating PR in ${options.fileMap.destRepo}:`,
-      expect.any(Error)
+    expect(core.error).toHaveBeenCalledWith(
+      `Error creating PR in ${options.fileMap.destRepo}: Failed to get ref`
     );
   });
 
@@ -381,7 +384,7 @@ describe('syncFiles', () => {
     await syncFiles(options);
 
     // Verify error was logged
-    expect(console.error).toHaveBeenCalled();
+    expect(core.error).toHaveBeenCalled();
   });
 
   it('should use the specified destination branch when provided', async () => {
