@@ -2,6 +2,7 @@ import * as core from "@actions/core";
 import { Octokit } from "@octokit/rest";
 import { syncFiles } from "./syncFiles";
 import { FileMappingsSchema } from "./types";
+import { createLogger } from "./utils/logging";
 
 export async function run(): Promise<void> {
 	const githubToken = core.getInput("github-token", { required: true });
@@ -11,22 +12,7 @@ export async function run(): Promise<void> {
 	const fileMaps = FileMappingsSchema.parse(filesMapInput);
 
 	// Create a custom logger for Octokit
-	const logger = {
-		debug: (message: string, info?: any) => {
-			if (debug) {
-				core.debug(`[Octokit] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
-			}
-		},
-		info: (message: string, info?: any) => {
-			core.info(`[Octokit] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
-		},
-		warn: (message: string, info?: any) => {
-			core.warning(`[Octokit] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
-		},
-		error: (message: string, info?: any) => {
-			core.error(`[Octokit] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
-		}
-	};
+	const logger = createLogger(debug, "Octokit");
 
 	const octokit = new Octokit({ 
 		auth: githubToken,
