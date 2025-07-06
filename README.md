@@ -190,3 +190,7 @@ Example workflow using a PAT with debug logging:
         }
       }
 ```
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
