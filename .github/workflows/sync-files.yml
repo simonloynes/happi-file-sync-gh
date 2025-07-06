@@ -1,11 +1,5 @@
 name: Sync Files
 on:
-  pull_request_target:
-    types: [closed]
-    branches:
-      - main
-    paths:
-      - "README.md"
   workflow_dispatch:
 permissions:
   contents: write
