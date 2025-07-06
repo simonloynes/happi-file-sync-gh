@@ -7,7 +7,8 @@ export const FileMappingSchema = z.object({
 	destRepo: z.string(),
 	destPath: z.string(),
 	destFilename: z.string(),
-	destBranch: z.string().optional()
+	destBranch: z.string().optional(),
+	existingBranchStrategy: z.enum(['update', 'create-new', 'fail']).optional().default('update')
 });
 
 export const FileMappingsSchema = z.record(z.string(), FileMappingSchema);
@@ -24,6 +25,7 @@ export interface FileMapping {
 	destPath: string;
 	destFilename: string;
 	destBranch?: string;
+	existingBranchStrategy?: 'update' | 'create-new' | 'fail';
 }
 
 export interface FileMappings {

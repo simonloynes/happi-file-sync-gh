@@ -74,6 +74,10 @@ The `file-mappings` input is a JSON object where each key is a unique identifier
 - `destPath`: Directory path in the destination repository (use `"."` for files in the root directory)
 - `destFilename`: Name of the file in the destination repository
 - `destBranch`: (Optional) Target branch in the destination repository (defaults to `main` with fallback to `master`)
+- `existingBranchStrategy`: (Optional) How to handle existing branches with the same name. Options:
+  - `update` (default): Update the existing branch and its pull request
+  - `create-new`: Create a new branch with timestamp suffix (e.g., `sync-file-config-2024-01-15T10-30-45`)
+  - `fail`: Fail the action if the branch already exists
 
 Example with a file in the root directory:
 ```json
@@ -102,18 +106,60 @@ Example with a custom destination branch:
 }
 ```
 
+Example with custom branch handling strategy:
+```json
+{
+  "unique-branches": {
+    "sourcePath": "config",
+    "sourceFilename": "settings.json",
+    "destRepo": "other-org/other-repo",
+    "destPath": "config",
+    "destFilename": "settings.json",
+    "destBranch": "main",
+    "existingBranchStrategy": "create-new"
+  }
+}
+```
+
+### Branch Handling Strategies
+
+The action provides three strategies for handling situations where a branch with the same name already exists:
+
+#### `update` (Default)
+- **Behavior**: Updates the existing branch and its associated pull request
+- **Use case**: When you want to keep updating the same PR with new changes
+- **Example**: Perfect for continuous sync scenarios where you want to maintain a single PR
+
+#### `create-new`
+- **Behavior**: Creates a new branch with a timestamp suffix (e.g., `sync-config-2024-01-15T10-30-45`)
+- **Use case**: When you want to create separate PRs for each sync operation
+- **Example**: Useful for tracking individual sync events or when you want to review each change separately
+
+#### `fail`
+- **Behavior**: Fails the action if the branch already exists
+- **Use case**: When you want to ensure no conflicts and handle existing branches manually
+- **Example**: Good for one-time syncs or when you want explicit control over branch management
+
 ### How it Works
 
 1. When changes are pushed to the monitored branch, the action will:
    - Check for changes in the specified source files
-   - Create a new branch in the destination repository
+   - Handle branch creation based on the `existingBranchStrategy`:
+     - If branch doesn't exist: Create a new branch
+     - If branch exists and strategy is `update`: Use the existing branch
+     - If branch exists and strategy is `create-new`: Create a new branch with timestamp suffix
+     - If branch exists and strategy is `fail`: Fail the action
    - Copy the updated file(s) to the destination repository
-   - Create a pull request with the changes
+   - Create or update a pull request with the changes
 
 2. Pull requests will be created with:
-   - Branch name: `sync-{sourceFilename}-{destFilename}`
+   - Branch name: `sync-{sourceFilename}-{destFilename}` (or with timestamp suffix for `create-new` strategy)
    - Title: `Sync {sourceFilename} from other-org/other-repo`
    - Description: This PR was automatically created by the `[happi-file-sync-gh](https://github.com/simonloynes/happi-file-sync-gh)` action.
+
+3. If a pull request already exists for the branch, the action will:
+   - Log the existing PR URL
+   - Continue without creating a duplicate PR
 
 ### Permissions
 
