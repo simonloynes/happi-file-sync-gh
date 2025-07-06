@@ -80,7 +80,10 @@ describe('run', () => {
 
     expect(syncFiles).toHaveBeenCalledWith({
       octokit: mockOctokit,
-      fileMap: mockFileMapping
+      fileMap: {
+        ...mockFileMapping,
+        existingBranchStrategy: 'update'
+      }
     });
   });
 
