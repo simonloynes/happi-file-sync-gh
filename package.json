@@ -10,7 +10,7 @@
 	},
 	"scripts": {
 		"build": "ncc build ./src/index.ts",
-		"test": "vitest",
+		"test": "vitest run",
 		"format": "prettier --write .",
 		"format:check": "prettier --check ."
 	},
