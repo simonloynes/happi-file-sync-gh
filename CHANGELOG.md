@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v1.4.0] - 2025-07-06
 
 ### Added
 - **Branch handling strategies**: Added support for handling situations where a branch already exists on the destination repository
@@ -28,13 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.0] - 2024-01-15
 
-### Added
-- Initial release of happi-file-sync-gh action
-- Support for syncing files between GitHub repositories
-- Automatic pull request creation
-- Configurable file mappings with source and destination paths
-- Support for custom destination branches
-- Debug logging capabilities
+### Changed
+- Improved logging using the Octokit core util.
 
 ## [1.2.0] -  2024-03-17
 
