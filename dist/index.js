@@ -31345,12 +31345,13 @@ const dist_src_Octokit = Octokit.plugin(requestLog, legacyRestEndpointMethods, p
 
 
 ;// CONCATENATED MODULE: ./src/syncFiles.ts
+
 async function syncFiles(options) {
     const { octokit, fileMap } = options;
     const { destFilename, destPath, sourcePath, sourceFilename, destRepo, destBranch = 'main' } = fileMap;
-    console.log(`Starting sync for ${sourceFilename} to ${destRepo}/${destPath}/${destFilename}`);
+    core.info(`Starting sync for ${sourceFilename} to ${destRepo}/${destPath}/${destFilename}`);
     try {
-        console.log(`Fetching content from ${process.env.GITHUB_REPOSITORY_OWNER}/${process.env.GITHUB_REPOSITORY?.split("/")[1]}/${sourcePath === '.' ? '' : sourcePath + '/'}${sourceFilename}`);
+        core.info(`Fetching content from ${process.env.GITHUB_REPOSITORY_OWNER}/${process.env.GITHUB_REPOSITORY?.split("/")[1]}/${sourcePath === '.' ? '' : sourcePath + '/'}${sourceFilename}`);
         const filePath = sourcePath === '.' ? sourceFilename : `${sourcePath}/${sourceFilename}`;
         const { data: fileContent } = await octokit.repos.getContent({
             owner: process.env.GITHUB_REPOSITORY_OWNER,
@@ -31358,28 +31359,31 @@ async function syncFiles(options) {
             path: filePath
         });
         if ("content" in fileContent) {
-            console.log(`Successfully fetched content for ${sourceFilename}`);
+            core.info(`Successfully fetched content for ${sourceFilename}`);
             const decodedContent = Buffer.from(fileContent.content, "base64").toString();
             await createPullRequest(octokit, destRepo, destPath, destFilename, sourceFilename, decodedContent, destBranch);
         }
         else {
-            console.error(`Content not found in response for ${sourceFilename}`);
+            core.error(`Content not found in response for ${sourceFilename}`);
         }
     }
     catch (error) {
-        console.error(`Error processing ${sourceFilename}:`, error);
+        core.error(`Error processing ${sourceFilename}: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            core.debug(`Error stack: ${error.stack}`);
+        }
     }
 }
 async function createPullRequest(octokit, destRepo, destPath, destFilename, sourceFilename, fileContent, defaultBranch = 'main') {
     const [owner, repo] = destRepo.split("/");
     const branchName = `sync-${sourceFilename}-${destFilename}`;
     const destFilePath = destPath === '.' ? destFilename : `${destPath}/${destFilename}`;
-    console.log(`Creating PR in ${destRepo} with branch ${branchName}`);
+    core.info(`Creating PR in ${destRepo} with branch ${branchName}`);
     try {
         // Try to get the reference for the specified branch, falling back to 'master' if not found
         let refData;
         try {
-            console.log(`Getting ref for ${owner}/${repo}/heads/${defaultBranch}`);
+            core.info(`Getting ref for ${owner}/${repo}/heads/${defaultBranch}`);
             const response = await octokit.git.getRef({
                 owner,
                 repo,
@@ -31389,7 +31393,7 @@ async function createPullRequest(octokit, destRepo, destPath, destFilename, sour
         }
         catch (error) {
             if (error.status === 404 && defaultBranch === 'main') {
-                console.log(`${defaultBranch} branch not found, trying master branch`);
+                core.info(`${defaultBranch} branch not found, trying master branch`);
                 defaultBranch = 'master';
                 const response = await octokit.git.getRef({
                     owner,
@@ -31403,7 +31407,7 @@ async function createPullRequest(octokit, destRepo, destPath, destFilename, sour
             }
         }
         // Create a new branch
-        console.log(`Creating branch ${branchName} from SHA ${refData.object.sha}`);
+        core.info(`Creating branch ${branchName} from SHA ${refData.object.sha}`);
         await octokit.git.createRef({
             owner,
             repo,
@@ -31412,7 +31416,7 @@ async function createPullRequest(octokit, destRepo, destPath, destFilename, sour
         });
         // Check if file exists and update or create accordingly
         try {
-            console.log(`Checking if file ${destFilePath} exists in branch ${branchName}`);
+            core.info(`Checking if file ${destFilePath} exists in branch ${branchName}`);
             const { data: existingFile } = await octokit.repos.getContent({
                 owner,
                 repo,
@@ -31420,7 +31424,7 @@ async function createPullRequest(octokit, destRepo, destPath, destFilename, sour
                 ref: branchName
             });
             if ("sha" in existingFile) {
-                console.log(`Updating existing file with SHA ${existingFile.sha}`);
+                core.info(`Updating existing file with SHA ${existingFile.sha}`);
                 await octokit.repos.createOrUpdateFileContents({
                     owner,
                     repo,
@@ -31434,7 +31438,7 @@ async function createPullRequest(octokit, destRepo, destPath, destFilename, sour
         }
         catch (error) {
             // File doesn't exist, create it
-            console.log(`File doesn't exist, creating new file at ${destFilePath}`);
+            core.info(`File doesn't exist, creating new file at ${destFilePath}`);
             await octokit.repos.createOrUpdateFileContents({
                 owner,
                 repo,
@@ -31445,7 +31449,7 @@ async function createPullRequest(octokit, destRepo, destPath, destFilename, sour
             });
         }
         // Create a pull request
-        console.log(`Creating pull request from ${branchName} to ${defaultBranch}`);
+        core.info(`Creating pull request from ${branchName} to ${defaultBranch}`);
         const pr = await octokit.pulls.create({
             owner,
             repo,
@@ -31454,13 +31458,13 @@ async function createPullRequest(octokit, destRepo, destPath, destFilename, sour
             base: defaultBranch,
             body: "This PR was automatically created by the `[happi-file-sync-gh](https://github.com/simonloynes/happi-file-sync-gh)` action."
         });
-        console.log(`Created PR #${pr.data.number} for ${destFilename} in ${destRepo}: ${pr.data.html_url}`);
+        core.info(`Created PR #${pr.data.number} for ${destFilename} in ${destRepo}: ${pr.data.html_url}`);
     }
     catch (error) {
-        console.error(`Error creating PR in ${destRepo}:`, error);
+        core.error(`Error creating PR in ${destRepo}: ${error instanceof Error ? error.message : String(error)}`);
         if (error instanceof Error) {
-            console.error(`Error message: ${error.message}`);
-            console.error(`Error stack: ${error.stack}`);
+            core.error(`Error message: ${error.message}`);
+            core.debug(`Error stack: ${error.stack}`);
         }
     }
 }
@@ -35888,16 +35892,45 @@ const SyncFilesOptionsSchema = z.object({
     fileMappings: FileMappingsSchema
 });
 
+;// CONCATENATED MODULE: ./src/utils/logging/index.ts
+
+function createLogger(debug, prefix = "Octokit") {
+    return {
+        debug: (message, info) => {
+            if (debug) {
+                core.debug(`[${prefix}] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
+            }
+        },
+        info: (message, info) => {
+            core.info(`[${prefix}] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
+        },
+        warn: (message, info) => {
+            core.warning(`[${prefix}] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
+        },
+        error: (message, info) => {
+            core.error(`[${prefix}] ${message}${info ? ` ${JSON.stringify(info)}` : ''}`);
+        }
+    };
+}
+
 ;// CONCATENATED MODULE: ./src/index.ts
+
 
 
 
 
 async function run() {
     const githubToken = core.getInput("github-token", { required: true });
+    const debug = core.getInput("debug") === "true";
     const filesMapInput = JSON.parse(core.getInput("file-mappings"));
     const fileMaps = FileMappingsSchema.parse(filesMapInput);
-    const octokit = new dist_src_Octokit({ auth: githubToken });
+    // Create a custom logger for Octokit
+    const logger = createLogger(debug, "Octokit");
+    const octokit = new dist_src_Octokit({
+        auth: githubToken,
+        log: logger,
+        debug: debug
+    });
     await Promise.all(Object.keys(fileMaps).map(async (mapKey) => {
         await syncFiles({ octokit, fileMap: fileMaps[mapKey] });
     }));
@@ -35905,10 +35938,12 @@ async function run() {
 
 
 // Execute the run function when the action is run
-run().catch(error => {
-    console.error("Action failed with error:", error);
-    core.setFailed(error.message);
-});
+if (process.env.GITHUB_ACTIONS === 'true') {
+    run().catch(error => {
+        console.error("Action failed with error:", error);
+        core.setFailed(error.message);
+    });
+}
 
 var __webpack_exports__FileMappingSchema = __webpack_exports__.eg;
 var __webpack_exports__FileMappingsSchema = __webpack_exports__.dZ;
