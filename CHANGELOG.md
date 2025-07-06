@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced test coverage with new tests for all branch handling strategies
 - Improved GitHub API calls to check for existing branches and pull requests
 
-## [1.3.0] - 2024-01-15
+## [1.3.0] - 2025-07-06
 
 ### Changed
 - Improved logging using the Octokit core util.
