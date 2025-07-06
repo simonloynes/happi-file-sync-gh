@@ -71,7 +71,7 @@ describe('syncFiles', () => {
         }
       });
 
-    // Mock getRef
+    // Mock getRef for main branch
     mockOctokit.git.getRef.mockResolvedValueOnce({
       data: {
         object: {
@@ -79,6 +79,11 @@ describe('syncFiles', () => {
         }
       }
     });
+
+    // Mock getRef for branch existence check (branch doesn't exist)
+    const notFoundError = new Error('Not Found');
+    (notFoundError as any).status = 404;
+    mockOctokit.git.getRef.mockRejectedValueOnce(notFoundError);
 
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
@@ -143,7 +148,7 @@ describe('syncFiles', () => {
       // Mock getContent for destination file to throw
       .mockRejectedValueOnce(new Error('Not found'));
 
-    // Mock getRef
+    // Mock getRef for main branch
     mockOctokit.git.getRef.mockResolvedValueOnce({
       data: {
         object: {
@@ -151,6 +156,11 @@ describe('syncFiles', () => {
         }
       }
     });
+
+    // Mock getRef for branch existence check (branch doesn't exist)
+    const notFoundError = new Error('Not Found');
+    (notFoundError as any).status = 404;
+    mockOctokit.git.getRef.mockRejectedValueOnce(notFoundError);
 
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
@@ -196,7 +206,7 @@ describe('syncFiles', () => {
       // Mock getContent for destination file to throw
       .mockRejectedValueOnce(new Error('Not found'));
 
-    // Mock getRef
+    // Mock getRef for main branch
     mockOctokit.git.getRef.mockResolvedValueOnce({
       data: {
         object: {
@@ -204,6 +214,11 @@ describe('syncFiles', () => {
         }
       }
     });
+
+    // Mock getRef for branch existence check (branch doesn't exist)
+    const notFoundError = new Error('Not Found');
+    (notFoundError as any).status = 404;
+    mockOctokit.git.getRef.mockRejectedValueOnce(notFoundError);
 
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
@@ -249,7 +264,7 @@ describe('syncFiles', () => {
       // Mock getContent for destination file to throw
       .mockRejectedValueOnce(new Error('Not found'));
 
-    // Mock getRef
+    // Mock getRef for main branch
     mockOctokit.git.getRef.mockResolvedValueOnce({
       data: {
         object: {
@@ -257,6 +272,11 @@ describe('syncFiles', () => {
         }
       }
     });
+
+    // Mock getRef for branch existence check (branch doesn't exist)
+    const notFoundError = new Error('Not Found');
+    (notFoundError as any).status = 404;
+    mockOctokit.git.getRef.mockRejectedValueOnce(notFoundError);
 
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
@@ -330,14 +350,15 @@ describe('syncFiles', () => {
     const notFoundError = new Error('Not Found');
     (notFoundError as any).status = 404;
     mockOctokit.git.getRef
-      .mockRejectedValueOnce(notFoundError)
-      .mockResolvedValueOnce({
+      .mockRejectedValueOnce(notFoundError) // main branch not found
+      .mockResolvedValueOnce({ // master branch found
         data: {
           object: {
             sha: mockSha
           }
         }
-      });
+      })
+      .mockRejectedValueOnce(notFoundError); // sync branch doesn't exist
 
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
@@ -403,7 +424,7 @@ describe('syncFiles', () => {
         }
       });
 
-    // Mock getRef
+    // Mock getRef for custom branch
     mockOctokit.git.getRef.mockResolvedValueOnce({
       data: {
         object: {
@@ -411,6 +432,11 @@ describe('syncFiles', () => {
         }
       }
     });
+
+    // Mock getRef for branch existence check (branch doesn't exist)
+    const notFoundError = new Error('Not Found');
+    (notFoundError as any).status = 404;
+    mockOctokit.git.getRef.mockRejectedValueOnce(notFoundError);
 
     // Mock other API calls
     mockOctokit.git.createRef.mockResolvedValueOnce({});
@@ -442,5 +468,185 @@ describe('syncFiles', () => {
       base: customBranch,
       body: "This PR was automatically created by the `[happi-file-sync-gh](https://github.com/simonloynes/happi-file-sync-gh)` action."
     });
+  });
+
+  it('should handle existing branch with update strategy', async () => {
+    // Mock getContent for source file
+    mockOctokit.repos.getContent
+      .mockResolvedValueOnce({
+        data: {
+          content: mockBase64Content,
+          sha: mockSha
+        }
+      })
+      // Mock getContent for destination file
+      .mockResolvedValueOnce({
+        data: {
+          sha: mockSha
+        }
+      });
+
+    // Mock getRef for main branch
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock getRef for branch existence check (branch exists)
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock pulls.list to return existing PR
+    mockOctokit.pulls = {
+      ...mockOctokit.pulls,
+      list: vi.fn().mockResolvedValueOnce({
+        data: [{
+          number: 123,
+          html_url: 'https://github.com/dest-owner/dest-repo/pull/123'
+        }]
+      })
+    };
+
+    // Mock other API calls
+    mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
+
+    const options = {
+      ...mockOptions(),
+      fileMap: {
+        ...mockOptions().fileMap,
+        existingBranchStrategy: 'update' as const
+      }
+    };
+    
+    await syncFiles(options);
+
+    // Verify branch was not created (it already exists)
+    expect(mockOctokit.git.createRef).not.toHaveBeenCalled();
+    
+    // Verify file was updated
+    expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalled();
+    
+    // Verify PR was not created (it already exists)
+    expect(mockOctokit.pulls.create).not.toHaveBeenCalled();
+  });
+
+  it('should handle existing branch with create-new strategy', async () => {
+    // Mock getContent for source file
+    mockOctokit.repos.getContent
+      .mockResolvedValueOnce({
+        data: {
+          content: mockBase64Content,
+          sha: mockSha
+        }
+      })
+      // Mock getContent for destination file
+      .mockResolvedValueOnce({
+        data: {
+          sha: mockSha
+        }
+      });
+
+    // Mock getRef for main branch
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock getRef for branch existence check (branch exists)
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock other API calls
+    mockOctokit.git.createRef.mockResolvedValueOnce({});
+    mockOctokit.repos.createOrUpdateFileContents.mockResolvedValueOnce({});
+    mockOctokit.pulls.create.mockResolvedValueOnce({
+      data: {
+        number: 124,
+        html_url: 'https://github.com/dest-owner/dest-repo/pull/124'
+      }
+    });
+
+    const options = {
+      ...mockOptions(),
+      fileMap: {
+        ...mockOptions().fileMap,
+        existingBranchStrategy: 'create-new' as const
+      }
+    };
+    
+    await syncFiles(options);
+
+    // Verify new branch was created with timestamp suffix
+    expect(mockOctokit.git.createRef).toHaveBeenCalledWith({
+      owner: 'dest-owner',
+      repo: 'dest-repo',
+      ref: expect.stringMatching(/^refs\/heads\/sync-source\.txt-dest\.txt-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/),
+      sha: mockSha
+    });
+    
+    // Verify file was updated
+    expect(mockOctokit.repos.createOrUpdateFileContents).toHaveBeenCalled();
+    
+    // Verify PR was created
+    expect(mockOctokit.pulls.create).toHaveBeenCalled();
+  });
+
+  it('should fail when branch exists with fail strategy', async () => {
+    // Mock getContent for source file
+    mockOctokit.repos.getContent.mockResolvedValueOnce({
+      data: {
+        content: mockBase64Content,
+        sha: mockSha
+      }
+    });
+
+    // Mock getRef for main branch
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    // Mock getRef for branch existence check (branch exists)
+    mockOctokit.git.getRef.mockResolvedValueOnce({
+      data: {
+        object: {
+          sha: mockSha
+        }
+      }
+    });
+
+    const options = {
+      ...mockOptions(),
+      fileMap: {
+        ...mockOptions().fileMap,
+        existingBranchStrategy: 'fail' as const
+      }
+    };
+    
+    await syncFiles(options);
+
+    // Verify error was logged
+    expect(core.error).toHaveBeenCalledWith(
+      expect.stringContaining('Error creating PR in dest-owner/dest-repo: Branch sync-source.txt-dest.txt already exists')
+    );
   });
 }); 
