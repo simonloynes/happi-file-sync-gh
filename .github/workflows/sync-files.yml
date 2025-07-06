@@ -1,4 +1,4 @@
-name: Sync Files
+name: Sync Files v1
 on:
   workflow_dispatch:
 permissions:
